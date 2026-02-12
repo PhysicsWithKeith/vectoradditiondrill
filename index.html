@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Vector Addition Game - Physics Challenge!</title>
+    <title>Vector Addition Drill - Physics With Keith</title>
     <style>
         /* ========================================
            GLOBAL STYLES & THEME
@@ -645,8 +645,8 @@
              INTRODUCTION SCREEN
              ======================================== -->
         <div id="intro-screen" class="screen active">
-            <h1 class="game-title">⚡ Vector Addition ⚡</h1>
-            <p class="subtitle">Master the Art of Adding Vectors!</p>
+            <h1 class="game-title">⚡ Vector Addition Drill ⚡</h1>
+            <p class="subtitle">Physics With Keith</p>
             
             <div class="rules-card">
                 <h2>🎯 Game Rules</h2>
@@ -840,7 +840,7 @@
         }
         
         /**
-         * Calculate angle in degrees (0° = right, counterclockwise positive)
+         * Calculate angle in degrees (0° = right, anticlockwise positive)
          */
         function angleInDegrees(x, y) {
             let angle = Math.atan2(y, x) * 180 / Math.PI;
@@ -1082,8 +1082,8 @@
             const startAngle = 0; // Always start from positive x-axis
             const endAngle = -mathAngle * Math.PI / 180; // Negate for canvas Y-down system
             
-            // Determine if we should draw clockwise or counter-clockwise
-            // In canvas, negative angles go clockwise (which appears counter-clockwise visually since Y is flipped)
+            // Determine if we should draw clockwise or anticlockwise
+            // In canvas, negative angles go clockwise (which appears anticlockwise visually since Y is flipped)
             const anticlockwise = mathAngle > 0;
             
             ctx.strokeStyle = '#ffbe0b';
@@ -1198,8 +1198,19 @@
             document.getElementById('feedback-container').innerHTML = '';
             document.getElementById('solution-container').style.display = 'none';
             
+            // Clear previous inputs and feedback
+            document.getElementById('magnitude-input').value = '';
+            document.getElementById('angle-input').value = '';
+            document.getElementById('feedback-container').innerHTML = '';
+            document.getElementById('solution-container').style.display = 'none';
+            
             // Draw the question
             drawQuestion();
+            
+            // Set focus to magnitude input
+            setTimeout(() => {
+                document.getElementById('magnitude-input').focus();
+            }, 100);
         }
         
         /**
@@ -1499,10 +1510,31 @@
             // Validate angle if required
             let angleCorrect = true;
             if (gameState.currentQuestion.isAdvanced) {
-                // Handle angle wrapping (e.g., 355° and 5° are close)
-                const angleDiff = Math.abs(normalizeAngle(userAngle) - normalizeAngle(correctAngle));
-                const wrappedDiff = Math.min(angleDiff, 360 - angleDiff);
-                angleCorrect = wrappedDiff <= ANGLE_TOLERANCE;
+                // Accept angles from any reference frame (horizontal, vertical, etc.)
+                // If 20° is correct, also accept 70° (from vertical), 110°, 160°, 200°, 250°, 290°, 340°
+                const normUser = normalizeAngle(userAngle);
+                const normCorrect = normalizeAngle(correctAngle);
+                
+                // Generate all possible equivalent angles from different reference frames
+                const equivalentAngles = [
+                    normCorrect,                        // From +x (0°)
+                    (90 - normCorrect + 360) % 360,     // From +y CW
+                    (90 + normCorrect) % 360,           // From +y CCW  
+                    (180 - normCorrect + 360) % 360,    // From -x (mirrored)
+                    (180 + normCorrect) % 360,          // Opposite direction
+                    (270 - normCorrect + 360) % 360,    // From -y CW
+                    (270 + normCorrect) % 360,          // From -y CCW
+                    (360 - normCorrect) % 360           // Clockwise from +x
+                ];
+                
+                // Check if user angle is close to any equivalent angle
+                angleCorrect = equivalentAngles.some(equivAngle => {
+                    const diff = Math.min(
+                        Math.abs(normUser - equivAngle),
+                        360 - Math.abs(normUser - equivAngle)
+                    );
+                    return diff <= ANGLE_TOLERANCE;
+                });
             }
             
             gameState.attemptsRemaining--;
@@ -1556,7 +1588,7 @@
                 } else if (!magnitudeCorrect) {
                     hint = `❌ Magnitude is incorrect. Try again! ${gameState.attemptsRemaining} attempt(s) remaining.`;
                 } else if (!angleCorrect) {
-                    hint = `❌ Angle is incorrect. Remember: angles are measured counterclockwise from the positive x-axis! ${gameState.attemptsRemaining} attempt(s) remaining.`;
+                    hint = `❌ Angle is incorrect. Remember: angles are measured anticlockwise from the positive x-axis! ${gameState.attemptsRemaining} attempt(s) remaining.`;
                 }
                 
                 showFeedback(hint, 'incorrect');
@@ -1607,6 +1639,11 @@
             const solutionContainer = document.getElementById('solution-container');
             solutionContainer.style.display = 'block';
             
+            // Scroll the solution into view
+            setTimeout(() => {
+                solutionContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 100);
+            
             const canvas = document.getElementById('vector-canvas');
             const ctx = canvas.getContext('2d');
             const question = gameState.currentQuestion;
@@ -1614,52 +1651,63 @@
             // Clear canvas
             ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
             
-            // Calculate the bounding box of the resultant vector to determine scale
-            const resultMag = magnitude(question.result.x, question.result.y);
-            
-            // Determine scale to fit solution nicely in canvas with margins
+            // Calculate the bounding box needed for tip-to-tail diagram
             const margin = 80;
             const availableWidth = CANVAS_WIDTH - 2 * margin;
             const availableHeight = CANVAS_HEIGHT - 2 * margin;
             
-            // Calculate required space for the solution
-            const maxX = Math.max(Math.abs(question.result.x), 2);
-            const maxY = Math.max(Math.abs(question.result.y), 2);
+            // Calculate total extent when vectors are placed tip-to-tail
+            let minX = 0, maxX = 0, minY = 0, maxY = 0;
+            let cumX = 0, cumY = 0;
             
+            for (const vector of question.vectors) {
+                cumX += vector.x;
+                cumY += vector.y;
+                minX = Math.min(minX, cumX);
+                maxX = Math.max(maxX, cumX);
+                minY = Math.min(minY, cumY);
+                maxY = Math.max(maxY, cumY);
+            }
+            
+            // Add padding to the range
+            const rangeX = (maxX - minX) || 2;
+            const rangeY = (maxY - minY) || 2;
+            const paddingFactor = 1.4;
+            
+            // Calculate scale that fits everything proportionally
             const scale = Math.min(
-                availableWidth / (maxX * 2.2),
-                availableHeight / (maxY * 2.2),
-                GRID_SIZE
+                availableWidth / (rangeX * paddingFactor),
+                availableHeight / (rangeY * paddingFactor)
             );
             
-            // Starting position (left side of canvas)
-            const startX = margin;
-            const startY = CANVAS_HEIGHT / 2;
+            // Center the diagram
+            const centerX = CANVAS_WIDTH / 2 - ((maxX + minX) / 2) * scale;
+            const centerY = CANVAS_HEIGHT / 2 + ((maxY + minY) / 2) * scale;
             
-            // Draw coordinate axes
-            ctx.strokeStyle = '#00d4ff';
-            ctx.lineWidth = 2;
+            // Draw coordinate axes through the center
+            ctx.strokeStyle = 'rgba(0, 212, 255, 0.4)';
+            ctx.lineWidth = 1;
             ctx.setLineDash([5, 5]);
             
             // X-axis
             ctx.beginPath();
-            ctx.moveTo(margin - 20, startY);
-            ctx.lineTo(CANVAS_WIDTH - margin + 20, startY);
+            ctx.moveTo(margin / 2, centerY);
+            ctx.lineTo(CANVAS_WIDTH - margin / 2, centerY);
             ctx.stroke();
             
             // Y-axis  
             ctx.beginPath();
-            ctx.moveTo(startX, margin - 20);
-            ctx.lineTo(startX, CANVAS_HEIGHT - margin + 20);
+            ctx.moveTo(centerX, margin / 2);
+            ctx.lineTo(centerX, CANVAS_HEIGHT - margin / 2);
             ctx.stroke();
             
             ctx.setLineDash([]);
             
-            // Draw vectors tip-to-tail
+            // Draw vectors tip-to-tail from the center
             const colors = ['#00d4ff', '#9d4edd', '#ff006e', '#06ffa5', '#ffbe0b'];
             
-            let currentX = startX;
-            let currentY = startY;
+            let currentX = centerX;
+            let currentY = centerY;
             
             for (let i = 0; i < question.vectors.length; i++) {
                 const vector = question.vectors[i];
@@ -1686,11 +1734,11 @@
                 currentY = endY;
             }
             
-            // Draw resultant vector (dashed) from start to end
+            // Draw resultant vector (dashed) from center to end
             drawArrow(
                 ctx, 
-                startX, 
-                startY, 
+                centerX, 
+                centerY, 
                 currentX, 
                 currentY, 
                 '#06ffa5', 
@@ -1701,11 +1749,11 @@
             // Resultant label
             ctx.fillStyle = '#06ffa5';
             ctx.font = 'bold 16px Segoe UI';
-            const resultMidX = (startX + currentX) / 2;
-            const resultMidY = (startY + currentY) / 2;
+            const resultMidX = (centerX + currentX) / 2;
+            const resultMidY = (centerY + currentY) / 2;
             
             // Offset label for resultant
-            const resultAngle = Math.atan2(currentY - startY, currentX - startX);
+            const resultAngle = Math.atan2(currentY - centerY, currentX - centerX);
             const resultOffsetX = -20 * Math.sin(resultAngle);
             const resultOffsetY = 20 * Math.cos(resultAngle);
             
@@ -1716,7 +1764,7 @@
             if (question.isAdvanced) {
                 solutionText.innerHTML = `
                     Magnitude: <strong>${question.result.magnitude.toFixed(2)}</strong> units<br>
-                    Angle: <strong>${Math.round(question.result.angle)}°</strong> (counterclockwise from +x axis)
+                    Angle: <strong>${Math.round(question.result.angle)}°</strong> (anticlockwise from +x axis)
                 `;
             } else {
                 solutionText.innerHTML = `
