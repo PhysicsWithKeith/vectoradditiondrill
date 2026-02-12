@@ -1,0 +1,1866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Vector Addition Game - Physics Challenge!</title>
+    <style>
+        /* ========================================
+           GLOBAL STYLES & THEME
+           ======================================== */
+        
+        :root {
+            /* Vibrant physics-inspired color palette */
+            --primary-blue: #00d4ff;
+            --primary-purple: #9d4edd;
+            --primary-pink: #ff006e;
+            --primary-green: #06ffa5;
+            --primary-yellow: #ffbe0b;
+            --primary-orange: #ff6d00;
+            
+            --bg-dark: #0a0e27;
+            --bg-card: #1a1f3a;
+            --text-light: #ffffff;
+            --text-muted: #b8c5d6;
+            --success: #06ffa5;
+            --error: #ff006e;
+            --warning: #ffbe0b;
+            
+            /* Grid and canvas colors */
+            --grid-major: rgba(0, 212, 255, 0.3);
+            --grid-minor: rgba(0, 212, 255, 0.1);
+            --canvas-bg: #0d1129;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #2a1f3a 100%);
+            color: var(--text-light);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        /* Animated background particles */
+        body::before {
+            content: '';
+            position: fixed;
+            width: 200%;
+            height: 200%;
+            top: -50%;
+            left: -50%;
+            background-image: 
+                radial-gradient(circle at 20% 50%, rgba(157, 78, 221, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(0, 212, 255, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 20%, rgba(255, 0, 110, 0.05) 0%, transparent 50%);
+            animation: float 20s ease-in-out infinite;
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(30px, -30px) rotate(5deg); }
+            66% { transform: translate(-20px, 20px) rotate(-5deg); }
+        }
+        
+        /* ========================================
+           CONTAINER & LAYOUT
+           ======================================== */
+        
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 15px;
+        }
+        
+        .screen {
+            display: none;
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        .screen.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* ========================================
+           INTRODUCTION SCREEN
+           ======================================== */
+        
+        #intro-screen {
+            text-align: center;
+            padding: 20px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        .game-title {
+            font-size: 3em;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--primary-blue), var(--primary-purple), var(--primary-pink));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+        
+        @keyframes glow {
+            from { filter: drop-shadow(0 0 10px rgba(0, 212, 255, 0.5)); }
+            to { filter: drop-shadow(0 0 20px rgba(157, 78, 221, 0.8)); }
+        }
+        
+        .subtitle {
+            font-size: 1.2em;
+            color: var(--primary-green);
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .rules-card {
+            background: var(--bg-card);
+            border-radius: 15px;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto 20px;
+            border: 2px solid rgba(0, 212, 255, 0.3);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+        
+        .rules-card h2 {
+            color: var(--primary-yellow);
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+        
+        .rules-card ul {
+            text-align: left;
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .rules-card li {
+            margin: 10px 0;
+            padding-left: 30px;
+            position: relative;
+            font-size: 0.95em;
+            line-height: 1.4;
+        }
+        
+        .rules-card li::before {
+            content: '⚡';
+            position: absolute;
+            left: 0;
+            color: var(--primary-orange);
+            font-size: 1.2em;
+        }
+        
+        .mode-selector {
+            margin: 20px 0;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .mode-btn {
+            background: linear-gradient(135deg, var(--primary-blue), var(--primary-purple));
+            color: white;
+            border: none;
+            padding: 15px 35px;
+            font-size: 1.2em;
+            font-weight: 700;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 5px 20px rgba(0, 212, 255, 0.4);
+        }
+        
+        .mode-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(0, 212, 255, 0.6);
+        }
+        
+        .mode-btn.hardcore {
+            background: linear-gradient(135deg, var(--primary-pink), var(--primary-orange));
+            box-shadow: 0 5px 20px rgba(255, 0, 110, 0.4);
+        }
+        
+        .mode-btn.hardcore:hover {
+            box-shadow: 0 8px 30px rgba(255, 0, 110, 0.6);
+        }
+        
+        /* ========================================
+           GAME SCREEN
+           ======================================== */
+        
+        #game-screen {
+            padding: 10px 0;
+        }
+        
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .stat-box {
+            background: var(--bg-card);
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: 2px solid var(--primary-blue);
+            min-width: 120px;
+            text-align: center;
+        }
+        
+        .stat-label {
+            font-size: 0.85em;
+            color: var(--text-muted);
+            margin-bottom: 3px;
+        }
+        
+        .stat-value {
+            font-size: 1.6em;
+            font-weight: 700;
+            color: var(--primary-green);
+        }
+        
+        .timer-box .stat-value {
+            color: var(--primary-yellow);
+        }
+        
+        .timer-box.warning .stat-value {
+            color: var(--error);
+            animation: pulse 1s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .end-early-btn {
+            background: var(--error);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9em;
+        }
+        
+        .end-early-btn:hover {
+            background: #cc0055;
+            transform: scale(1.05);
+        }
+        
+        .question-card {
+            background: var(--bg-card);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border: 2px solid rgba(0, 212, 255, 0.3);
+        }
+        
+        .question-text {
+            font-size: 1.3em;
+            margin-bottom: 15px;
+            color: var(--primary-yellow);
+            font-weight: 600;
+        }
+        
+        .difficulty-indicator {
+            display: inline-block;
+            margin-left: 12px;
+            font-size: 0.75em;
+            padding: 4px 12px;
+            border-radius: 15px;
+            background: var(--primary-purple);
+        }
+        
+        .canvas-container {
+            background: var(--canvas-bg);
+            border-radius: 12px;
+            padding: 15px;
+            margin: 15px 0;
+            border: 3px solid var(--grid-major);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #vector-canvas {
+            display: block;
+            margin: 0 auto;
+            cursor: crosshair;
+            background: var(--canvas-bg);
+        }
+        
+        .drag-message {
+            text-align: center;
+            color: var(--primary-green);
+            font-size: 0.95em;
+            margin-top: 10px;
+            font-weight: 600;
+        }
+        
+        .answer-section {
+            margin-top: 15px;
+        }
+        
+        .input-group {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+        
+        .input-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .input-label {
+            font-size: 0.85em;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+        
+        .answer-input {
+            background: var(--bg-dark);
+            border: 2px solid var(--primary-blue);
+            color: var(--text-light);
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-size: 1.1em;
+            width: 130px;
+            text-align: center;
+            font-weight: 600;
+        }
+        
+        .answer-input:focus {
+            outline: none;
+            border-color: var(--primary-green);
+            box-shadow: 0 0 15px rgba(6, 255, 165, 0.3);
+        }
+        
+        .submit-btn {
+            background: linear-gradient(135deg, var(--primary-green), var(--primary-blue));
+            color: var(--bg-dark);
+            border: none;
+            padding: 12px 35px;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(6, 255, 165, 0.5);
+        }
+        
+        .submit-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .feedback-message {
+            text-align: center;
+            padding: 15px;
+            margin-top: 15px;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .feedback-message.correct {
+            background: rgba(6, 255, 165, 0.2);
+            border: 2px solid var(--success);
+            color: var(--success);
+        }
+        
+        .feedback-message.incorrect {
+            background: rgba(255, 0, 110, 0.2);
+            border: 2px solid var(--error);
+            color: var(--error);
+        }
+        
+        .feedback-message.hint {
+            background: rgba(255, 190, 11, 0.2);
+            border: 2px solid var(--warning);
+            color: var(--warning);
+        }
+        
+        .attempts-remaining {
+            display: inline-block;
+            margin-left: 12px;
+            font-size: 0.85em;
+            color: var(--text-muted);
+        }
+        
+        .solution-display {
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(0, 212, 255, 0.1);
+            border-radius: 12px;
+            border: 2px solid var(--primary-blue);
+        }
+        
+        .solution-title {
+            font-size: 1.3em;
+            color: var(--primary-yellow);
+            margin-bottom: 15px;
+            font-weight: 700;
+            text-align: center;
+        }
+        
+        .solution-text {
+            text-align: center;
+            font-size: 1.2em;
+            color: var(--primary-green);
+            font-weight: 600;
+            margin-top: 12px;
+        }
+        
+        .next-question-btn {
+            background: linear-gradient(135deg, var(--primary-purple), var(--primary-pink));
+            color: white;
+            border: none;
+            padding: 12px 35px;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 15px;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .next-question-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(157, 78, 221, 0.5);
+        }
+        
+        /* ========================================
+           END SCREEN
+           ======================================== */
+        
+        #end-screen {
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .end-title {
+            font-size: 2.5em;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--primary-yellow), var(--primary-orange));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+        }
+        
+        .score-card {
+            background: var(--bg-card);
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 600px;
+            margin: 0 auto 20px;
+            border: 3px solid var(--primary-green);
+            box-shadow: 0 10px 40px rgba(6, 255, 165, 0.3);
+        }
+        
+        .final-score {
+            font-size: 3.5em;
+            font-weight: 900;
+            color: var(--primary-green);
+            margin: 15px 0;
+            text-shadow: 0 0 20px rgba(6, 255, 165, 0.5);
+        }
+        
+        .score-label {
+            font-size: 1.3em;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .stat-item {
+            background: var(--bg-dark);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid var(--primary-blue);
+        }
+        
+        .stat-item-value {
+            font-size: 2em;
+            font-weight: 700;
+            color: var(--primary-blue);
+        }
+        
+        .stat-item-label {
+            font-size: 0.9em;
+            color: var(--text-muted);
+            margin-top: 5px;
+        }
+        
+        .play-again-btn {
+            background: linear-gradient(135deg, var(--primary-blue), var(--primary-purple));
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.3em;
+            font-weight: 700;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-top: 20px;
+        }
+        
+        .play-again-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(0, 212, 255, 0.6);
+        }
+        
+        /* ========================================
+           RESPONSIVE DESIGN
+           ======================================== */
+        
+        @media (max-width: 768px) {
+            .game-title {
+                font-size: 2em;
+            }
+            
+            .subtitle {
+                font-size: 1em;
+            }
+            
+            .rules-card {
+                padding: 15px;
+            }
+            
+            .rules-card li {
+                font-size: 0.85em;
+            }
+            
+            .mode-btn {
+                padding: 12px 25px;
+                font-size: 1em;
+            }
+            
+            .game-header {
+                justify-content: center;
+            }
+            
+            .stat-box {
+                min-width: 100px;
+                padding: 8px 15px;
+            }
+            
+            .stat-value {
+                font-size: 1.3em;
+            }
+            
+            .question-text {
+                font-size: 1.1em;
+            }
+            
+            #vector-canvas {
+                max-width: 100%;
+                height: auto;
+            }
+            
+            .end-title {
+                font-size: 2em;
+            }
+            
+            .final-score {
+                font-size: 2.5em;
+            }
+            
+            .container {
+                padding: 10px;
+            }
+        }
+        
+        /* Ensure canvas fits on small screens */
+        @media (max-width: 750px) {
+            #vector-canvas {
+                width: 100%;
+                max-width: 700px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- ========================================
+             INTRODUCTION SCREEN
+             ======================================== -->
+        <div id="intro-screen" class="screen active">
+            <h1 class="game-title">⚡ Vector Addition ⚡</h1>
+            <p class="subtitle">Master the Art of Adding Vectors!</p>
+            
+            <div class="rules-card">
+                <h2>🎯 Game Rules</h2>
+                <ul>
+                    <li><strong>Time Limit:</strong> You have 5 minutes to answer as many questions correctly as possible!</li>
+                    <li><strong>Adaptive Difficulty:</strong> Start with 2 vectors. Each correct answer adds another vector (up to 5). Wrong answers decrease difficulty (down to 2).</li>
+                    <li><strong>Three Attempts:</strong> You get 3 tries per question. Use them wisely!</li>
+                    <li><strong>Draggable Vectors:</strong> With 2-3 vectors, drag them around to visualize the answer (they snap to grid lines). With 4+ vectors, no dragging allowed!</li>
+                    <li><strong>Enter Your Answer:</strong> Type the magnitude of the resultant vector and press Enter to submit.</li>
+                    <li><strong>Hardcore Mode:</strong> For an extra challenge, you'll also need to calculate angles! Some questions won't have grids - just angles and magnitudes.</li>
+                    <li><strong>Score Points:</strong> Correct first attempt = maximum points. More attempts = fewer points.</li>
+                </ul>
+            </div>
+            
+            <div class="mode-selector">
+                <button class="mode-btn" onclick="startGame(false)">🎮 Normal Mode</button>
+                <button class="mode-btn hardcore" onclick="startGame(true)">🔥 Hardcore Mode</button>
+            </div>
+        </div>
+        
+        <!-- ========================================
+             GAME SCREEN
+             ======================================== -->
+        <div id="game-screen" class="screen">
+            <div class="game-header">
+                <div class="stat-box">
+                    <div class="stat-label">Score</div>
+                    <div class="stat-value" id="score-display">0</div>
+                </div>
+                
+                <div class="stat-box timer-box" id="timer-box">
+                    <div class="stat-label">Time Remaining</div>
+                    <div class="stat-value" id="timer-display">5:00</div>
+                </div>
+                
+                <div class="stat-box">
+                    <div class="stat-label">Vectors</div>
+                    <div class="stat-value" id="vectors-display">2</div>
+                </div>
+                
+                <button class="end-early-btn" onclick="endGame()">End Early</button>
+            </div>
+            
+            <div class="question-card">
+                <div class="question-text">
+                    <span id="question-text">Calculate the resultant vector</span>
+                    <span class="difficulty-indicator" id="difficulty-display">Level: 1</span>
+                </div>
+                
+                <div class="canvas-container">
+                    <canvas id="vector-canvas" width="700" height="500"></canvas>
+                    <div class="drag-message" id="drag-message"></div>
+                </div>
+                
+                <div class="answer-section">
+                    <div class="input-group">
+                        <div class="input-wrapper">
+                            <label class="input-label">Magnitude</label>
+                            <input type="number" id="magnitude-input" class="answer-input" 
+                                   placeholder="0.0" step="0.1" 
+                                   onkeypress="handleKeyPress(event, 'magnitude')">
+                        </div>
+                        
+                        <div class="input-wrapper" id="angle-input-wrapper" style="display: none;">
+                            <label class="input-label">Angle (degrees)</label>
+                            <input type="number" id="angle-input" class="answer-input" 
+                                   placeholder="0.0" step="0.1" 
+                                   onkeypress="handleKeyPress(event, 'angle')">
+                        </div>
+                        
+                        <button class="submit-btn" onclick="submitAnswer()">Submit Answer</button>
+                    </div>
+                    
+                    <div id="feedback-container"></div>
+                    
+                    <div id="solution-container" style="display: none;">
+                        <div class="solution-display">
+                            <h3 class="solution-title">✨ Solution</h3>
+                            <div class="solution-text" id="solution-text"></div>
+                            <button class="next-question-btn" onclick="nextQuestion()">Next Question →</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ========================================
+             END SCREEN
+             ======================================== -->
+        <div id="end-screen" class="screen">
+            <h1 class="end-title">🏆 Game Over! 🏆</h1>
+            
+            <div class="score-card">
+                <div class="score-label">Your Final Score</div>
+                <div class="final-score" id="final-score-display">0</div>
+                
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-item-value" id="total-questions">0</div>
+                        <div class="stat-item-label">Questions Attempted</div>
+                    </div>
+                    
+                    <div class="stat-item">
+                        <div class="stat-item-value" id="correct-answers">0</div>
+                        <div class="stat-item-label">Correct Answers</div>
+                    </div>
+                    
+                    <div class="stat-item">
+                        <div class="stat-item-value" id="accuracy-rate">0%</div>
+                        <div class="stat-item-label">Accuracy</div>
+                    </div>
+                </div>
+            </div>
+            
+            <button class="play-again-btn" onclick="resetGame()">Play Again!</button>
+        </div>
+    </div>
+    
+    <script>
+        /* ========================================
+           GAME STATE & CONFIGURATION
+           ======================================== */
+        
+        const gameState = {
+            isHardcoreMode: false,
+            score: 0,
+            currentVectorCount: 2,
+            timeRemaining: 300, // 5 minutes in seconds
+            timerInterval: null,
+            currentQuestion: null,
+            attemptsRemaining: 3,
+            totalQuestions: 0,
+            correctAnswers: 0,
+            isGameActive: false,
+            draggedVectorIndex: null,
+            vectorsCanBeDragged: false,
+            hasMovedVectors: false
+        };
+        
+        // Canvas configuration
+        const CANVAS_WIDTH = 700;
+        const CANVAS_HEIGHT = 500;
+        const GRID_SIZE = 35; // Major grid spacing
+        const FINE_GRID_SIZE = 8.75; // Fine grid spacing for snapping (GRID_SIZE / 4)
+        const ORIGIN_X = CANVAS_WIDTH / 2;
+        const ORIGIN_Y = CANVAS_HEIGHT / 2;
+        const MAX_MAGNITUDE = 10; // Maximum vector magnitude in grid units
+        const ARROW_HEAD_SIZE = 12;
+        
+        // Tolerance for answer validation (in grid units)
+        const ANSWER_TOLERANCE = 0.6; // Allows for graphical methods
+        const ANGLE_TOLERANCE = 5; // degrees
+        
+        /* ========================================
+           UTILITY FUNCTIONS
+           ======================================== */
+        
+        /**
+         * Convert canvas coordinates to grid coordinates
+         */
+        function canvasToGrid(canvasX, canvasY) {
+            return {
+                x: (canvasX - ORIGIN_X) / GRID_SIZE,
+                y: (ORIGIN_Y - canvasY) / GRID_SIZE
+            };
+        }
+        
+        /**
+         * Convert grid coordinates to canvas coordinates
+         */
+        function gridToCanvas(gridX, gridY) {
+            return {
+                x: ORIGIN_X + gridX * GRID_SIZE,
+                y: ORIGIN_Y - gridY * GRID_SIZE
+            };
+        }
+        
+        /**
+         * Snap a grid coordinate to the fine grid
+         */
+        function snapToGrid(value) {
+            const fineGridUnits = GRID_SIZE / FINE_GRID_SIZE;
+            return Math.round(value * fineGridUnits) / fineGridUnits;
+        }
+        
+        /**
+         * Calculate vector magnitude
+         */
+        function magnitude(x, y) {
+            return Math.sqrt(x * x + y * y);
+        }
+        
+        /**
+         * Calculate angle in degrees (0° = right, counterclockwise positive)
+         */
+        function angleInDegrees(x, y) {
+            let angle = Math.atan2(y, x) * 180 / Math.PI;
+            if (angle < 0) angle += 360;
+            return angle;
+        }
+        
+        /**
+         * Normalize angle to 0-360 range
+         */
+        function normalizeAngle(angle) {
+            angle = angle % 360;
+            if (angle < 0) angle += 360;
+            return angle;
+        }
+        
+        /**
+         * Check if a vector endpoint is within canvas bounds
+         */
+        function isVectorOnScreen(x, y, originX = ORIGIN_X, originY = ORIGIN_Y) {
+            const canvasEnd = gridToCanvas(x, y);
+            const endX = originX + (canvasEnd.x - ORIGIN_X);
+            const endY = originY + (canvasEnd.y - ORIGIN_Y);
+            const margin = 30; // Keep vectors at least 30px from edge
+            
+            return endX >= margin && endX <= CANVAS_WIDTH - margin &&
+                   endY >= margin && endY <= CANVAS_HEIGHT - margin;
+        }
+        
+        /**
+         * Generate a random vector with snapped components
+         */
+        function generateRandomVector(isAdvancedQuestion = false) {
+            let attempts = 0;
+            let x, y;
+            
+            if (isAdvancedQuestion) {
+                // For advanced questions, generate magnitude and angle
+                do {
+                    const mag = Math.random() * (MAX_MAGNITUDE - 2) + 2; // 2 to MAX_MAGNITUDE
+                    const ang = Math.random() * 360;
+                    x = mag * Math.cos(ang * Math.PI / 180);
+                    y = mag * Math.sin(ang * Math.PI / 180);
+                    
+                    x = snapToGrid(x);
+                    y = snapToGrid(y);
+                    attempts++;
+                } while (!isVectorOnScreen(x, y) && attempts < 50);
+                
+                // Calculate final magnitude and angle from snapped coordinates
+                return {
+                    x: x,
+                    y: y,
+                    magnitude: magnitude(x, y),
+                    angle: normalizeAngle(angleInDegrees(x, y))
+                };
+            } else {
+                // Regular questions with grid-aligned components
+                // Limit range to ensure vectors stay on screen
+                const maxRange = Math.min(MAX_MAGNITUDE - 1, 8);
+                
+                do {
+                    x = snapToGrid((Math.random() - 0.5) * maxRange * 2);
+                    y = snapToGrid((Math.random() - 0.5) * maxRange * 2);
+                    attempts++;
+                    
+                    // Ensure vector is not too small
+                    if (magnitude(x, y) < 1.5) {
+                        continue;
+                    }
+                    
+                    // Check if on screen
+                    if (isVectorOnScreen(x, y)) {
+                        break;
+                    }
+                } while (attempts < 50);
+                
+                return { x, y };
+            }
+        }
+        
+        /* ========================================
+           DRAWING FUNCTIONS
+           ======================================== */
+        
+        /**
+         * Draw grid on canvas
+         */
+        function drawGrid(ctx, showGrid = true) {
+            ctx.strokeStyle = 'rgba(0, 212, 255, 0.1)';
+            ctx.lineWidth = 1;
+            
+            if (!showGrid) return;
+            
+            // Draw fine grid lines
+            for (let i = -CANVAS_WIDTH; i <= CANVAS_WIDTH; i += FINE_GRID_SIZE) {
+                ctx.beginPath();
+                ctx.moveTo(ORIGIN_X + i, 0);
+                ctx.lineTo(ORIGIN_X + i, CANVAS_HEIGHT);
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.moveTo(0, ORIGIN_Y + i);
+                ctx.lineTo(CANVAS_WIDTH, ORIGIN_Y + i);
+                ctx.stroke();
+            }
+            
+            // Draw major grid lines
+            ctx.strokeStyle = 'rgba(0, 212, 255, 0.3)';
+            ctx.lineWidth = 2;
+            
+            for (let i = -CANVAS_WIDTH; i <= CANVAS_WIDTH; i += GRID_SIZE) {
+                ctx.beginPath();
+                ctx.moveTo(ORIGIN_X + i, 0);
+                ctx.lineTo(ORIGIN_X + i, CANVAS_HEIGHT);
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.moveTo(0, ORIGIN_Y + i);
+                ctx.lineTo(CANVAS_WIDTH, ORIGIN_Y + i);
+                ctx.stroke();
+            }
+            
+            // Draw axes
+            ctx.strokeStyle = '#00d4ff';
+            ctx.lineWidth = 3;
+            
+            // X-axis
+            ctx.beginPath();
+            ctx.moveTo(0, ORIGIN_Y);
+            ctx.lineTo(CANVAS_WIDTH, ORIGIN_Y);
+            ctx.stroke();
+            
+            // Y-axis
+            ctx.beginPath();
+            ctx.moveTo(ORIGIN_X, 0);
+            ctx.lineTo(ORIGIN_X, CANVAS_HEIGHT);
+            ctx.stroke();
+            
+            // Draw axis labels
+            ctx.fillStyle = '#00d4ff';
+            ctx.font = 'bold 14px Segoe UI';
+            ctx.textAlign = 'center';
+            
+            // X-axis numbers
+            for (let i = -Math.floor(ORIGIN_X / GRID_SIZE); i <= Math.floor(ORIGIN_X / GRID_SIZE); i++) {
+                if (i !== 0) {
+                    const x = ORIGIN_X + i * GRID_SIZE;
+                    ctx.fillText(i.toString(), x, ORIGIN_Y + 20);
+                }
+            }
+            
+            // Y-axis numbers
+            ctx.textAlign = 'right';
+            for (let i = -Math.floor(ORIGIN_Y / GRID_SIZE); i <= Math.floor(ORIGIN_Y / GRID_SIZE); i++) {
+                if (i !== 0) {
+                    const y = ORIGIN_Y - i * GRID_SIZE;
+                    ctx.fillText(i.toString(), ORIGIN_X - 10, y + 5);
+                }
+            }
+            
+            // Origin label
+            ctx.textAlign = 'right';
+            ctx.fillText('0', ORIGIN_X - 10, ORIGIN_Y + 20);
+        }
+        
+        /**
+         * Draw an arrow from (x1, y1) to (x2, y2) in canvas coordinates
+         */
+        function drawArrow(ctx, x1, y1, x2, y2, color, lineWidth = 3, dashed = false) {
+            const headLength = ARROW_HEAD_SIZE;
+            const angle = Math.atan2(y2 - y1, x2 - x1);
+            
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = lineWidth;
+            
+            // Draw line
+            ctx.beginPath();
+            if (dashed) {
+                ctx.setLineDash([10, 5]);
+            } else {
+                ctx.setLineDash([]);
+            }
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Draw arrow head
+            ctx.beginPath();
+            ctx.moveTo(x2, y2);
+            ctx.lineTo(
+                x2 - headLength * Math.cos(angle - Math.PI / 6),
+                y2 - headLength * Math.sin(angle - Math.PI / 6)
+            );
+            ctx.lineTo(
+                x2 - headLength * Math.cos(angle + Math.PI / 6),
+                y2 - headLength * Math.sin(angle + Math.PI / 6)
+            );
+            ctx.closePath();
+            ctx.fill();
+        }
+        
+        /**
+         * Draw a vector with label
+         */
+        function drawVector(ctx, vector, index, color, originX = null, originY = null) {
+            // Use vector's own origin if not specified
+            if (originX === null) originX = vector.originX || ORIGIN_X;
+            if (originY === null) originY = vector.originY || ORIGIN_Y;
+            
+            const canvasEnd = gridToCanvas(vector.x, vector.y);
+            const endX = originX + (canvasEnd.x - ORIGIN_X);
+            const endY = originY + (canvasEnd.y - ORIGIN_Y);
+            
+            drawArrow(ctx, originX, originY, endX, endY, color);
+            
+            // Draw label
+            const labelX = originX + (endX - originX) * 0.5;
+            const labelY = originY + (endY - originY) * 0.5;
+            
+            ctx.fillStyle = color;
+            ctx.font = 'bold 16px Segoe UI';
+            ctx.textAlign = 'center';
+            ctx.fillText(`V${index + 1}`, labelX - 20, labelY - 10);
+        }
+        
+        /**
+         * Draw angle arc and label for advanced questions
+         * In canvas coordinates, Y increases downward, so we need to flip angles
+         */
+        function drawAngleArc(ctx, centerX, centerY, mathAngle, label, radius = 40) {
+            // Convert mathematical angle to canvas angle
+            // Mathematical: 0° = right, 90° = up, 180° = left, 270° = down
+            // Canvas: 0° = right, 90° = down, 180° = left, 270° = up
+            // So we need to negate the angle: canvasAngle = -mathAngle
+            
+            const startAngle = 0; // Always start from positive x-axis
+            const endAngle = -mathAngle * Math.PI / 180; // Negate for canvas Y-down system
+            
+            // Determine if we should draw clockwise or counter-clockwise
+            // In canvas, negative angles go clockwise (which appears counter-clockwise visually since Y is flipped)
+            const anticlockwise = mathAngle > 0;
+            
+            ctx.strokeStyle = '#ffbe0b';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, startAngle, endAngle, anticlockwise);
+            ctx.stroke();
+            
+            // Draw angle label at the midpoint of the arc
+            const labelAngle = -mathAngle / 2 * Math.PI / 180;
+            const labelX = centerX + (radius + 20) * Math.cos(labelAngle);
+            const labelY = centerY + (radius + 20) * Math.sin(labelAngle);
+            
+            ctx.fillStyle = '#ffbe0b';
+            ctx.font = 'bold 14px Segoe UI';
+            ctx.textAlign = 'center';
+            ctx.fillText(label, labelX, labelY);
+        }
+        
+        /* ========================================
+           QUESTION GENERATION
+           ======================================== */
+        
+        /**
+         * Generate a new question
+         */
+        function generateQuestion() {
+            const isAdvancedQuestion = gameState.isHardcoreMode && Math.random() < 0.4;
+            
+            const vectors = [];
+            for (let i = 0; i < gameState.currentVectorCount; i++) {
+                const vector = generateRandomVector(isAdvancedQuestion);
+                // Add origin position for dragging (initially at canvas origin)
+                vector.originX = ORIGIN_X;
+                vector.originY = ORIGIN_Y;
+                vectors.push(vector);
+            }
+            
+            // Calculate resultant vector
+            let resultX = 0;
+            let resultY = 0;
+            for (const vector of vectors) {
+                resultX += vector.x;
+                resultY += vector.y;
+            }
+            
+            const resultMagnitude = magnitude(resultX, resultY);
+            const resultAngle = angleInDegrees(resultX, resultY);
+            
+            gameState.currentQuestion = {
+                vectors: vectors,
+                result: {
+                    x: resultX,
+                    y: resultY,
+                    magnitude: resultMagnitude,
+                    angle: resultAngle
+                },
+                isAdvanced: isAdvancedQuestion,
+                canDragVectors: gameState.currentVectorCount <= 3 && !isAdvancedQuestion
+            };
+            
+            gameState.attemptsRemaining = 3;
+            gameState.hasMovedVectors = false;
+            gameState.vectorsCanBeDragged = gameState.currentQuestion.canDragVectors;
+            
+            // Update UI
+            updateQuestionDisplay();
+        }
+        
+        /**
+         * Update the question display
+         */
+        function updateQuestionDisplay() {
+            const question = gameState.currentQuestion;
+            
+            // Update question text
+            if (question.isAdvanced) {
+                document.getElementById('question-text').textContent = 
+                    'Calculate the magnitude AND angle of the resultant vector';
+            } else {
+                document.getElementById('question-text').textContent = 
+                    'Calculate the magnitude of the resultant vector';
+            }
+            
+            // Show/hide angle input
+            const angleWrapper = document.getElementById('angle-input-wrapper');
+            if (question.isAdvanced) {
+                angleWrapper.style.display = 'flex';
+            } else {
+                angleWrapper.style.display = 'none';
+            }
+            
+            // Update difficulty display
+            document.getElementById('difficulty-display').textContent = 
+                `Vectors: ${gameState.currentVectorCount}`;
+            
+            // Update drag message
+            const dragMessage = document.getElementById('drag-message');
+            if (question.canDragVectors && !gameState.hasMovedVectors) {
+                dragMessage.textContent = '💡 Drag vectors to help visualize the answer!';
+                dragMessage.style.display = 'block';
+            } else if (gameState.currentVectorCount >= 4 && !question.isAdvanced) {
+                dragMessage.textContent = '🔒 Too many vectors to drag - solve it mentally!';
+                dragMessage.style.display = 'block';
+            } else {
+                dragMessage.style.display = 'none';
+            }
+            
+            // Clear inputs and feedback
+            document.getElementById('magnitude-input').value = '';
+            document.getElementById('angle-input').value = '';
+            document.getElementById('feedback-container').innerHTML = '';
+            document.getElementById('solution-container').style.display = 'none';
+            
+            // Draw the question
+            drawQuestion();
+        }
+        
+        /**
+         * Draw the current question on the canvas
+         */
+        function drawQuestion() {
+            const canvas = document.getElementById('vector-canvas');
+            const ctx = canvas.getContext('2d');
+            const question = gameState.currentQuestion;
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+            
+            if (question.isAdvanced) {
+                // Advanced question - no grid, staggered vectors with angles
+                drawGrid(ctx, false);
+                
+                // Stagger vectors around the canvas
+                const positions = [];
+                const margin = 100;
+                const usableWidth = CANVAS_WIDTH - 2 * margin;
+                const usableHeight = CANVAS_HEIGHT - 2 * margin;
+                
+                for (let i = 0; i < question.vectors.length; i++) {
+                    const vector = question.vectors[i];
+                    
+                    // Generate non-overlapping positions that keep vectors on screen
+                    let x, y, overlapping, vectorOnScreen;
+                    let attempts = 0;
+                    do {
+                        x = margin + Math.random() * usableWidth;
+                        y = margin + Math.random() * usableHeight;
+                        overlapping = positions.some(pos => 
+                            Math.abs(pos.x - x) < 150 && Math.abs(pos.y - y) < 150
+                        );
+                        vectorOnScreen = isVectorOnScreen(vector.x, vector.y, x, y);
+                        attempts++;
+                    } while ((overlapping || !vectorOnScreen) && attempts < 100);
+                    
+                    // If we couldn't find a good position, use a fallback
+                    if (!vectorOnScreen) {
+                        x = ORIGIN_X;
+                        y = ORIGIN_Y;
+                    }
+                    
+                    positions.push({ x, y });
+                }
+                
+                // Draw each vector
+                const colors = ['#00d4ff', '#9d4edd', '#ff006e', '#06ffa5', '#ffbe0b'];
+                for (let i = 0; i < question.vectors.length; i++) {
+                    const vector = question.vectors[i];
+                    const pos = positions[i];
+                    const color = colors[i % colors.length];
+                    
+                    // Draw vector
+                    drawVector(ctx, vector, i, color, pos.x, pos.y);
+                    
+                    // Draw angle arc
+                    const angle = angleInDegrees(vector.x, vector.y);
+                    drawAngleArc(ctx, pos.x, pos.y, angle, `${Math.round(angle)}°`);
+                    
+                    // Draw magnitude label near the arrow head
+                    const canvasEnd = gridToCanvas(vector.x, vector.y);
+                    const endX = pos.x + (canvasEnd.x - ORIGIN_X);
+                    const endY = pos.y + (canvasEnd.y - ORIGIN_Y);
+                    
+                    ctx.fillStyle = color;
+                    ctx.font = 'bold 16px Segoe UI';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(`${magnitude(vector.x, vector.y).toFixed(1)}`, endX + 15, endY - 10);
+                }
+                
+            } else {
+                // Normal question - grid with vectors from their origins
+                drawGrid(ctx, true);
+                
+                // Draw vectors using their stored origins
+                const colors = ['#00d4ff', '#9d4edd', '#ff006e', '#06ffa5', '#ffbe0b'];
+                for (let i = 0; i < question.vectors.length; i++) {
+                    drawVector(ctx, question.vectors[i], i, colors[i % colors.length]);
+                }
+            }
+        }
+        
+        /* ========================================
+           CANVAS INTERACTION (DRAGGING)
+           ======================================== */
+        
+        let isDragging = false;
+        let draggedVectorIndex = -1;
+        let dragStartX = 0;
+        let dragStartY = 0;
+        let vectorOriginStartX = 0;
+        let vectorOriginStartY = 0;
+        
+        /**
+         * Initialize canvas event listeners
+         */
+        function initializeCanvas() {
+            const canvas = document.getElementById('vector-canvas');
+            
+            canvas.addEventListener('mousedown', handleMouseDown);
+            canvas.addEventListener('mousemove', handleMouseMove);
+            canvas.addEventListener('mouseup', handleMouseUp);
+            canvas.addEventListener('mouseleave', handleMouseUp);
+        }
+        
+        /**
+         * Handle mouse down on canvas
+         */
+        function handleMouseDown(e) {
+            if (!gameState.vectorsCanBeDragged || !gameState.isGameActive) return;
+            
+            const rect = e.target.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            // Check if mouse is near any vector (check the whole vector, not just endpoint)
+            const question = gameState.currentQuestion;
+            for (let i = 0; i < question.vectors.length; i++) {
+                const vector = question.vectors[i];
+                const originX = vector.originX || ORIGIN_X;
+                const originY = vector.originY || ORIGIN_Y;
+                
+                const canvasEnd = gridToCanvas(vector.x, vector.y);
+                const endX = originX + (canvasEnd.x - ORIGIN_X);
+                const endY = originY + (canvasEnd.y - ORIGIN_Y);
+                
+                // Check if mouse is near the vector line or endpoints
+                const distToStart = Math.sqrt(
+                    Math.pow(mouseX - originX, 2) + 
+                    Math.pow(mouseY - originY, 2)
+                );
+                const distToEnd = Math.sqrt(
+                    Math.pow(mouseX - endX, 2) + 
+                    Math.pow(mouseY - endY, 2)
+                );
+                
+                // Calculate distance to line segment
+                const lineLength = Math.sqrt(
+                    Math.pow(endX - originX, 2) + 
+                    Math.pow(endY - originY, 2)
+                );
+                
+                let distToLine = Infinity;
+                if (lineLength > 0) {
+                    const t = Math.max(0, Math.min(1, 
+                        ((mouseX - originX) * (endX - originX) + (mouseY - originY) * (endY - originY)) / (lineLength * lineLength)
+                    ));
+                    const projX = originX + t * (endX - originX);
+                    const projY = originY + t * (endY - originY);
+                    distToLine = Math.sqrt(
+                        Math.pow(mouseX - projX, 2) + 
+                        Math.pow(mouseY - projY, 2)
+                    );
+                }
+                
+                if (distToStart < 20 || distToEnd < 20 || distToLine < 15) {
+                    isDragging = true;
+                    draggedVectorIndex = i;
+                    dragStartX = mouseX;
+                    dragStartY = mouseY;
+                    vectorOriginStartX = originX;
+                    vectorOriginStartY = originY;
+                    gameState.hasMovedVectors = true;
+                    e.target.style.cursor = 'grabbing';
+                    break;
+                }
+            }
+        }
+        
+        /**
+         * Handle mouse move on canvas
+         */
+        function handleMouseMove(e) {
+            const rect = e.target.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            if (isDragging && draggedVectorIndex >= 0) {
+                // Calculate how much the mouse has moved
+                const dx = mouseX - dragStartX;
+                const dy = mouseY - dragStartY;
+                
+                // Update the vector's origin position (not its components!)
+                const newOriginX = vectorOriginStartX + dx;
+                const newOriginY = vectorOriginStartY + dy;
+                
+                // Snap to grid
+                const gridPos = canvasToGrid(newOriginX, newOriginY);
+                const snappedGrid = {
+                    x: snapToGrid(gridPos.x),
+                    y: snapToGrid(gridPos.y)
+                };
+                const snappedCanvas = gridToCanvas(snappedGrid.x, snappedGrid.y);
+                
+                // Check if vector endpoint would be on screen with new origin
+                const vector = gameState.currentQuestion.vectors[draggedVectorIndex];
+                if (isVectorOnScreen(vector.x, vector.y, snappedCanvas.x, snappedCanvas.y)) {
+                    vector.originX = snappedCanvas.x;
+                    vector.originY = snappedCanvas.y;
+                }
+                
+                // Redraw
+                drawQuestion();
+            } else if (gameState.vectorsCanBeDragged && gameState.isGameActive) {
+                // Check if hovering over a vector
+                const question = gameState.currentQuestion;
+                let hovering = false;
+                
+                for (let i = 0; i < question.vectors.length; i++) {
+                    const vector = question.vectors[i];
+                    const originX = vector.originX || ORIGIN_X;
+                    const originY = vector.originY || ORIGIN_Y;
+                    
+                    const canvasEnd = gridToCanvas(vector.x, vector.y);
+                    const endX = originX + (canvasEnd.x - ORIGIN_X);
+                    const endY = originY + (canvasEnd.y - ORIGIN_Y);
+                    
+                    const distToStart = Math.sqrt(
+                        Math.pow(mouseX - originX, 2) + 
+                        Math.pow(mouseY - originY, 2)
+                    );
+                    const distToEnd = Math.sqrt(
+                        Math.pow(mouseX - endX, 2) + 
+                        Math.pow(mouseY - endY, 2)
+                    );
+                    
+                    if (distToStart < 20 || distToEnd < 20) {
+                        hovering = true;
+                        break;
+                    }
+                }
+                
+                e.target.style.cursor = hovering ? 'grab' : 'crosshair';
+            }
+        }
+        
+        /**
+         * Handle mouse up on canvas
+         */
+        function handleMouseUp(e) {
+            isDragging = false;
+            draggedVectorIndex = -1;
+            if (e.target) {
+                e.target.style.cursor = 'crosshair';
+            }
+        }
+        
+        /* ========================================
+           ANSWER SUBMISSION & VALIDATION
+           ======================================== */
+        
+        /**
+         * Handle Enter key press in input fields
+         */
+        function handleKeyPress(event, inputType) {
+            if (event.key === 'Enter') {
+                if (inputType === 'magnitude' && gameState.currentQuestion.isAdvanced) {
+                    // Focus on angle input
+                    document.getElementById('angle-input').focus();
+                } else {
+                    submitAnswer();
+                }
+            }
+        }
+        
+        /**
+         * Submit and validate the answer
+         */
+        function submitAnswer() {
+            if (!gameState.isGameActive || gameState.attemptsRemaining <= 0) return;
+            
+            const magnitudeInput = document.getElementById('magnitude-input').value;
+            const angleInput = document.getElementById('angle-input').value;
+            
+            if (!magnitudeInput) {
+                showFeedback('Please enter a magnitude!', 'hint');
+                return;
+            }
+            
+            if (gameState.currentQuestion.isAdvanced && !angleInput) {
+                showFeedback('Please enter an angle!', 'hint');
+                return;
+            }
+            
+            const userMagnitude = parseFloat(magnitudeInput);
+            const userAngle = gameState.currentQuestion.isAdvanced ? parseFloat(angleInput) : null;
+            
+            const correctMagnitude = gameState.currentQuestion.result.magnitude;
+            const correctAngle = gameState.currentQuestion.result.angle;
+            
+            // Validate magnitude
+            const magnitudeCorrect = Math.abs(userMagnitude - correctMagnitude) <= ANSWER_TOLERANCE;
+            
+            // Validate angle if required
+            let angleCorrect = true;
+            if (gameState.currentQuestion.isAdvanced) {
+                // Handle angle wrapping (e.g., 355° and 5° are close)
+                const angleDiff = Math.abs(normalizeAngle(userAngle) - normalizeAngle(correctAngle));
+                const wrappedDiff = Math.min(angleDiff, 360 - angleDiff);
+                angleCorrect = wrappedDiff <= ANGLE_TOLERANCE;
+            }
+            
+            gameState.attemptsRemaining--;
+            
+            if (magnitudeCorrect && angleCorrect) {
+                // Correct answer!
+                handleCorrectAnswer();
+            } else {
+                // Wrong answer
+                handleWrongAnswer(magnitudeCorrect, angleCorrect);
+            }
+        }
+        
+        /**
+         * Handle a correct answer
+         */
+        function handleCorrectAnswer() {
+            // Award points based on attempts used
+            const pointsAwarded = [10, 7, 4][3 - gameState.attemptsRemaining - 1];
+            gameState.score += pointsAwarded;
+            gameState.correctAnswers++;
+            
+            showFeedback(
+                `🎉 Correct! +${pointsAwarded} points!`, 
+                'correct'
+            );
+            
+            // Increase difficulty
+            if (gameState.currentVectorCount < 5) {
+                gameState.currentVectorCount++;
+            }
+            
+            updateScoreDisplay();
+            showSolution();
+        }
+        
+        /**
+         * Handle a wrong answer
+         */
+        function handleWrongAnswer(magnitudeCorrect, angleCorrect) {
+            if (gameState.attemptsRemaining > 0) {
+                // Give hints
+                let hint = '';
+                
+                if (!magnitudeCorrect && !angleCorrect) {
+                    if (gameState.attemptsRemaining === 2) {
+                        hint = '❌ Both magnitude and angle are incorrect. Try the tip-to-tail method!';
+                    } else {
+                        hint = `❌ Still not quite right. The correct magnitude is around ${Math.round(gameState.currentQuestion.result.magnitude)} units.`;
+                    }
+                } else if (!magnitudeCorrect) {
+                    hint = `❌ Magnitude is incorrect. Try again! ${gameState.attemptsRemaining} attempt(s) remaining.`;
+                } else if (!angleCorrect) {
+                    hint = `❌ Angle is incorrect. Remember: angles are measured counterclockwise from the positive x-axis! ${gameState.attemptsRemaining} attempt(s) remaining.`;
+                }
+                
+                showFeedback(hint, 'incorrect');
+                
+                // Allow dragging after first wrong attempt if vectors were locked
+                if (gameState.currentVectorCount >= 4 && !gameState.currentQuestion.isAdvanced) {
+                    gameState.vectorsCanBeDragged = true;
+                    document.getElementById('drag-message').textContent = 
+                        '💡 You can now drag the vectors to help!';
+                    document.getElementById('drag-message').style.display = 'block';
+                }
+            } else {
+                // Out of attempts
+                showFeedback(
+                    '❌ Out of attempts! Here\'s the solution:', 
+                    'incorrect'
+                );
+                
+                // Decrease difficulty
+                if (gameState.currentVectorCount > 2) {
+                    gameState.currentVectorCount--;
+                }
+                
+                showSolution();
+            }
+        }
+        
+        /**
+         * Show feedback message
+         */
+        function showFeedback(message, type) {
+            const feedbackContainer = document.getElementById('feedback-container');
+            feedbackContainer.innerHTML = `
+                <div class="feedback-message ${type}">
+                    ${message}
+                    ${gameState.attemptsRemaining > 0 && type === 'incorrect' ? 
+                        `<span class="attempts-remaining">(${gameState.attemptsRemaining} attempt(s) left)</span>` : 
+                        ''
+                    }
+                </div>
+            `;
+        }
+        
+        /**
+         * Show the solution diagram
+         */
+        function showSolution() {
+            const solutionContainer = document.getElementById('solution-container');
+            solutionContainer.style.display = 'block';
+            
+            const canvas = document.getElementById('vector-canvas');
+            const ctx = canvas.getContext('2d');
+            const question = gameState.currentQuestion;
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+            
+            // Calculate the bounding box of the resultant vector to determine scale
+            const resultMag = magnitude(question.result.x, question.result.y);
+            
+            // Determine scale to fit solution nicely in canvas with margins
+            const margin = 80;
+            const availableWidth = CANVAS_WIDTH - 2 * margin;
+            const availableHeight = CANVAS_HEIGHT - 2 * margin;
+            
+            // Calculate required space for the solution
+            const maxX = Math.max(Math.abs(question.result.x), 2);
+            const maxY = Math.max(Math.abs(question.result.y), 2);
+            
+            const scale = Math.min(
+                availableWidth / (maxX * 2.2),
+                availableHeight / (maxY * 2.2),
+                GRID_SIZE
+            );
+            
+            // Starting position (left side of canvas)
+            const startX = margin;
+            const startY = CANVAS_HEIGHT / 2;
+            
+            // Draw coordinate axes
+            ctx.strokeStyle = '#00d4ff';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            
+            // X-axis
+            ctx.beginPath();
+            ctx.moveTo(margin - 20, startY);
+            ctx.lineTo(CANVAS_WIDTH - margin + 20, startY);
+            ctx.stroke();
+            
+            // Y-axis  
+            ctx.beginPath();
+            ctx.moveTo(startX, margin - 20);
+            ctx.lineTo(startX, CANVAS_HEIGHT - margin + 20);
+            ctx.stroke();
+            
+            ctx.setLineDash([]);
+            
+            // Draw vectors tip-to-tail
+            const colors = ['#00d4ff', '#9d4edd', '#ff006e', '#06ffa5', '#ffbe0b'];
+            
+            let currentX = startX;
+            let currentY = startY;
+            
+            for (let i = 0; i < question.vectors.length; i++) {
+                const vector = question.vectors[i];
+                const endX = currentX + vector.x * scale;
+                const endY = currentY - vector.y * scale; // Subtract because canvas Y is inverted
+                
+                drawArrow(ctx, currentX, currentY, endX, endY, colors[i % colors.length], 3);
+                
+                // Label
+                ctx.fillStyle = colors[i % colors.length];
+                ctx.font = 'bold 14px Segoe UI';
+                ctx.textAlign = 'center';
+                const midX = (currentX + endX) / 2;
+                const midY = (currentY + endY) / 2;
+                
+                // Offset label perpendicular to vector
+                const angle = Math.atan2(endY - currentY, endX - currentX);
+                const offsetX = -15 * Math.sin(angle);
+                const offsetY = 15 * Math.cos(angle);
+                
+                ctx.fillText(`V${i + 1}`, midX + offsetX, midY + offsetY);
+                
+                currentX = endX;
+                currentY = endY;
+            }
+            
+            // Draw resultant vector (dashed) from start to end
+            drawArrow(
+                ctx, 
+                startX, 
+                startY, 
+                currentX, 
+                currentY, 
+                '#06ffa5', 
+                4, 
+                true
+            );
+            
+            // Resultant label
+            ctx.fillStyle = '#06ffa5';
+            ctx.font = 'bold 16px Segoe UI';
+            const resultMidX = (startX + currentX) / 2;
+            const resultMidY = (startY + currentY) / 2;
+            
+            // Offset label for resultant
+            const resultAngle = Math.atan2(currentY - startY, currentX - startX);
+            const resultOffsetX = -20 * Math.sin(resultAngle);
+            const resultOffsetY = 20 * Math.cos(resultAngle);
+            
+            ctx.fillText('Resultant', resultMidX + resultOffsetX, resultMidY + resultOffsetY);
+            
+            // Show numerical answer
+            const solutionText = document.getElementById('solution-text');
+            if (question.isAdvanced) {
+                solutionText.innerHTML = `
+                    Magnitude: <strong>${question.result.magnitude.toFixed(2)}</strong> units<br>
+                    Angle: <strong>${Math.round(question.result.angle)}°</strong> (counterclockwise from +x axis)
+                `;
+            } else {
+                solutionText.innerHTML = `
+                    Magnitude: <strong>${question.result.magnitude.toFixed(2)}</strong> units
+                `;
+            }
+        }
+        
+        /* ========================================
+           GAME FLOW CONTROL
+           ======================================== */
+        
+        /**
+         * Start the game
+         */
+        function startGame(hardcoreMode) {
+            gameState.isHardcoreMode = hardcoreMode;
+            gameState.score = 0;
+            gameState.currentVectorCount = 2;
+            gameState.timeRemaining = 300;
+            gameState.totalQuestions = 0;
+            gameState.correctAnswers = 0;
+            gameState.isGameActive = true;
+            
+            // Show game screen
+            showScreen('game-screen');
+            
+            // Start timer
+            startTimer();
+            
+            // Generate first question
+            generateQuestion();
+            updateScoreDisplay();
+        }
+        
+        /**
+         * Start the countdown timer
+         */
+        function startTimer() {
+            updateTimerDisplay();
+            
+            gameState.timerInterval = setInterval(() => {
+                gameState.timeRemaining--;
+                updateTimerDisplay();
+                
+                // Warning at 30 seconds
+                if (gameState.timeRemaining === 30) {
+                    document.getElementById('timer-box').classList.add('warning');
+                }
+                
+                // Time's up!
+                if (gameState.timeRemaining <= 0) {
+                    endGame();
+                }
+            }, 1000);
+        }
+        
+        /**
+         * Update timer display
+         */
+        function updateTimerDisplay() {
+            const minutes = Math.floor(gameState.timeRemaining / 60);
+            const seconds = gameState.timeRemaining % 60;
+            document.getElementById('timer-display').textContent = 
+                `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+        
+        /**
+         * Update score display
+         */
+        function updateScoreDisplay() {
+            document.getElementById('score-display').textContent = gameState.score;
+            document.getElementById('vectors-display').textContent = gameState.currentVectorCount;
+        }
+        
+        /**
+         * Move to next question
+         */
+        function nextQuestion() {
+            gameState.totalQuestions++;
+            generateQuestion();
+        }
+        
+        /**
+         * End the game
+         */
+        function endGame() {
+            gameState.isGameActive = false;
+            
+            // Stop timer
+            if (gameState.timerInterval) {
+                clearInterval(gameState.timerInterval);
+                gameState.timerInterval = null;
+            }
+            
+            // Calculate statistics
+            const accuracy = gameState.totalQuestions > 0 
+                ? Math.round((gameState.correctAnswers / gameState.totalQuestions) * 100) 
+                : 0;
+            
+            // Update end screen
+            document.getElementById('final-score-display').textContent = gameState.score;
+            document.getElementById('total-questions').textContent = gameState.totalQuestions;
+            document.getElementById('correct-answers').textContent = gameState.correctAnswers;
+            document.getElementById('accuracy-rate').textContent = accuracy + '%';
+            
+            // Show end screen
+            showScreen('end-screen');
+        }
+        
+        /**
+         * Reset game to intro screen
+         */
+        function resetGame() {
+            gameState.isHardcoreMode = false;
+            gameState.score = 0;
+            gameState.currentVectorCount = 2;
+            gameState.timeRemaining = 300;
+            gameState.totalQuestions = 0;
+            gameState.correctAnswers = 0;
+            gameState.isGameActive = false;
+            
+            document.getElementById('timer-box').classList.remove('warning');
+            
+            showScreen('intro-screen');
+        }
+        
+        /**
+         * Show a specific screen
+         */
+        function showScreen(screenId) {
+            const screens = document.querySelectorAll('.screen');
+            screens.forEach(screen => screen.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+        
+        /* ========================================
+           INITIALIZATION
+           ======================================== */
+        
+        // Initialize canvas interactions when page loads
+        window.addEventListener('DOMContentLoaded', () => {
+            initializeCanvas();
+        });
+    </script>
+</body>
+</html>
