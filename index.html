@@ -651,7 +651,7 @@
             <div class="rules-card">
                 <h2>🎯 Game Rules</h2>
                 <ul>
-                    <li><strong>Time Limit:</strong> You have 5 minutes to answer as many questions correctly as possible!</li>
+                    <li><strong>Time Limit:</strong> You have 10 minutes to answer as many questions correctly as possible!</li>
                     <li><strong>Adaptive Difficulty:</strong> Start with 2 vectors. Each correct answer adds another vector (up to 5). Wrong answers decrease difficulty (down to 2).</li>
                     <li><strong>Three Attempts:</strong> You get 3 tries per question. Use them wisely!</li>
                     <li><strong>Draggable Vectors:</strong> With 2-3 vectors, drag them around to visualize the answer (they snap to grid lines). With 4+ vectors, no dragging allowed!</li>
@@ -774,7 +774,7 @@
             isHardcoreMode: false,
             score: 0,
             currentVectorCount: 2,
-            timeRemaining: 300, // 5 minutes in seconds
+            timeRemaining: 600, // 10 minutes in seconds
             timerInterval: null,
             currentQuestion: null,
             attemptsRemaining: 3,
@@ -1784,7 +1784,7 @@
             gameState.isHardcoreMode = hardcoreMode;
             gameState.score = 0;
             gameState.currentVectorCount = 2;
-            gameState.timeRemaining = 300;
+            gameState.timeRemaining = 600;
             gameState.totalQuestions = 0;
             gameState.correctAnswers = 0;
             gameState.isGameActive = true;
@@ -1882,7 +1882,7 @@
             gameState.isHardcoreMode = false;
             gameState.score = 0;
             gameState.currentVectorCount = 2;
-            gameState.timeRemaining = 300;
+            gameState.timeRemaining = 600;
             gameState.totalQuestions = 0;
             gameState.correctAnswers = 0;
             gameState.isGameActive = false;
